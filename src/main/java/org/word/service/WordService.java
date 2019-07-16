@@ -1,5 +1,6 @@
 package org.word.service;
 
+import org.word.dto.Definition;
 import org.word.dto.Table;
 
 import java.util.List;
@@ -9,5 +10,6 @@ import java.util.List;
  */
 public interface WordService {
 
-    List<Table> tableList();
+    List<Table> tableList(String swaggerUrl);
+    List<Definition> getDefinitions();
 }

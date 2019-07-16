@@ -15,12 +15,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.word.dto.Definition;
 import org.word.dto.Request;
 import org.word.dto.Response;
 import org.word.dto.Table;
 import org.word.service.WordService;
 import org.word.utils.JsonUtils;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -33,22 +35,26 @@ public class WordServiceImpl implements WordService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${swagger.url}")
+    //@Value("${swagger.url}")
     private String swaggerUrl;
 
     private static final String SUBSTR = "://";
     private static final String LEFT_BRACKETS = "{";
     private static final String RIGHT_BRACKETS = "}";
+    private String jsonStr;
+    Map<String, Object> map;
 
     @Override
-    public List<Table> tableList() {
+    public List<Table> tableList(String swaggerUrl) {
+
+        this.swaggerUrl = swaggerUrl;
+
         List<Table> result = new ArrayList<>();
         try {
-            String jsonStr = restTemplate.getForObject(swaggerUrl, String.class);
-            // convert JSON string to Map
-            Map<String, Object> map = JsonUtils.readValue(jsonStr, HashMap.class);
+            init();
+
             //得到 host 和 basePath，拼接访问路径
-            String host = StringUtils.substringBeforeLast(swaggerUrl, SUBSTR) + SUBSTR + map.get("host") + map.get("basePath");
+            String host = StringUtils.substringBeforeLast(this.swaggerUrl, SUBSTR) + SUBSTR + map.get("host") + map.get("basePath");
             //解析paths
             Map<String, LinkedHashMap> paths = (LinkedHashMap) map.get("paths");
             if (paths != null) {
@@ -138,7 +144,7 @@ public class WordServiceImpl implements WordService {
                     table.setRequestList(requestList);
                     table.setResponseList(responseList);
                     table.setRequestParam(paramMap.toString());
-                    table.setResponseParam(doRestRequest(restType, buildUrl, paramMap, url.contains(LEFT_BRACKETS)));
+                    // table.setResponseParam(doRestRequest(restType, buildUrl, paramMap, url.contains(LEFT_BRACKETS)));
                     result.add(table);
                 }
             }
@@ -146,6 +152,104 @@ public class WordServiceImpl implements WordService {
             log.error("parse error", e);
         }
         return result;
+    }
+
+    @Override
+    public List<Definition> getDefinitions() {
+
+        List<Definition> list = new ArrayList<>();
+
+        //解析Definitions
+        Map<String, LinkedHashMap> paths = (LinkedHashMap) map.get("definitions");
+
+        if (null != paths) {
+
+            Iterator<Map.Entry<String, LinkedHashMap>> it = paths.entrySet().iterator();
+
+            // 遍历对象定义
+            while (it.hasNext()) {
+
+                Definition def  = new Definition();
+
+                Map.Entry<String, LinkedHashMap> definition = it.next();
+
+                List<Definition> propList = new ArrayList<>();
+
+                String title = definition.getKey();
+                String defDesc = ""; //
+                if (title.startsWith("ApiResponse")) {
+                    defDesc = "API返回值";
+                } else if(title.startsWith("ApiPage")) {
+                    defDesc = "API返回的分页数据";
+                } else {
+                    defDesc = toString(definition.getValue().get("description"));
+                }
+                def.setTitle(title);
+                def.setDescription(defDesc);
+                def.setType(toString(definition.getValue().get("type")));
+
+                LinkedHashMap<String, LinkedHashMap> props = (LinkedHashMap)definition.getValue().get("properties");
+
+                if (null != props) {
+
+                    Iterator<Map.Entry<String, LinkedHashMap>> propIt = props.entrySet().iterator();
+
+                    // 遍历对象中的属性
+                    while (propIt.hasNext()) {
+                        Definition propDef  = new Definition();
+
+                        Map.Entry<String, LinkedHashMap> prop = propIt.next();
+
+
+                        //
+                        String desc = toString(prop.getValue().get("description"));
+
+                        // 例外场合 array
+                        String type = toString(prop.getValue().get("type"));
+                        if ("array".equals(type)) {
+                            desc = desc + " 参看: " + toString(((Map) prop.getValue().get("items")).get("$ref"))
+                                    + " " + toString(((Map) prop.getValue().get("items")).get("type"));
+                        }
+
+                        // 例外场合 采用泛型
+                        String gene = toString(prop.getValue().get("$ref"));
+                        if (!"".equals(gene)) {
+                            desc = desc  + " 参看: " + gene;
+                        }
+
+
+
+                        propDef.setTitle(prop.getKey());
+                        propDef.setType(toString(prop.getValue().get("type")));
+                        propDef.setDescription(desc);
+
+                        propList.add(propDef);
+                    }
+
+
+                }
+
+                def.setProperties(propList);
+
+                list.add(def);
+            }
+        }
+
+        return list;
+    }
+
+    public void init() throws IOException {
+        jsonStr = restTemplate.getForObject(swaggerUrl, String.class);
+        // convert JSON string to Map
+        map = JsonUtils.readValue(jsonStr, HashMap.class);
+    }
+
+    public String toString(Object obj) {
+        if (null != obj) {
+            return obj.toString();
+        } else {
+            return "";
+        }
     }
 
     /**

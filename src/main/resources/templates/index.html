@@ -1,6 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
+
 <body>
-<h2>Hello Swagger2word !</h2>
+<h2>Swagger to word!</h2>
+
+<form th:action="@{/getWord}">
+
+    <fieldset>
+        <input type="text" style="width: 100%" name="swaggerUrl" value=""/>
+        <br/>
+        <input type="submit" value="生成文档"/>
+    </fieldset>
+
+</form>
+
 </body>
 </html>

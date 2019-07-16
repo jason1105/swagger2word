@@ -2,6 +2,11 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta http-equiv="Content-Type" content="application/msword"/>
+    <script type="text/javascript" th:src="@{/js/jquery-3.4.1.min.js}"></script>
+    <script type="text/javascript" th:src="@{/js/FileSaver.min.js}"></script>
+    <script type="text/javascript" th:src="@{/js/jquery.wordexport.js}"></script>
+    <script type="text/javascript" th:src="@{/js/pace.min.js}"></script>
+    <link  th:href="@{/css/black/pace-theme-flat-top.css}"  rel= "stylesheet"  />
     <title>toWord</title>
     <style type="text/css">
         .bg {
@@ -19,8 +24,19 @@
     </style>
 </head>
 
+<script>
+    $(document).ready(function(){
+        $("<input type='button' id='downloadButton' value='Export Doc'>").prependTo("#mainDiv");
+
+        $("#downloadButton").click(function(event) {
+            $("#mainDiv").wordExport();
+        });
+
+    });
+</script>
+
 <body>
-<div style="width:800px; margin: 0 auto">
+<div id="mainDiv" style="width:800px; margin: 0 auto">
     <div th:each="table:${tables}">
         <!--这个是类的说明-->
         <h4 th:text="${table.title}"></h4>
@@ -94,5 +110,42 @@
         </table>
     </div>
 </div>
+
+<br/>
+<h3 align="center">对象信息</h3>
+<div style="width:800px; margin: 0 auto">
+    <div th:each="def:${definitions}">
+        <br/>
+        <table border="1" cellspacing="0" cellpadding="0" width="100%">
+            <tr class="bg">
+                <td colspan="5" th:text="${def.title}"></td>
+            </tr>
+            <tr>
+                <td>名称</td>
+                <td colspan="4" th:text="${def.description}"></td>
+            </tr>
+            <tr>
+                <td>类型</td>
+                <td colspan="4" th:text="${def.type}"></td>
+            </tr>
+
+            <tr class="bg" align="center">
+                <td>参数名</td>
+                <td>数据类型</td>
+                <td>说明</td>
+            </tr>
+
+            <tr align="center" th:each="prop:${def.getProperties()}">
+                <td th:text="${prop.title}"></td>
+                <td th:text="${prop.type}"></td>
+                <td th:text="${prop.description}"></td>
+            </tr>
+
+
+        </table>
+    </div>
+</div>
+
+
 </body>
 </html>
